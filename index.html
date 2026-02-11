@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Random Media Viewer</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-hover: #16a34a;
+      --border: #374151;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, #1e293b, var(--bg));
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      padding: 1rem;
+    }
+
+    .app {
+      width: min(100%, 1320px);
+      background: color-mix(in srgb, var(--panel) 90%, black 10%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.85rem;
+      box-shadow: 0 20px 50px rgb(0 0 0 / 0.35);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 0.8rem;
+      align-items: stretch;
+    }
+
+    .media-stage {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .side-rail {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgb(2 6 23 / 0.55);
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      align-self: stretch;
+      overflow-y: auto;
+      max-height: 86vh;
+    }
+
+    button,
+    .file-label {
+      border: 0;
+      border-radius: 10px;
+      padding: 0.45rem 0.68rem;
+      font-size: 0.84rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: #04240f;
+      font-weight: 600;
+      transition: background 0.2s ease;
+    }
+
+    button:hover,
+    .file-label:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      align-content: flex-start;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgb(255 255 255 / 0.03);
+    }
+
+    .group-nav {
+      background: rgb(22 163 74 / 0.12);
+      border-color: rgb(22 163 74 / 0.35);
+    }
+
+    .group-nav button {
+      background: #22c55e;
+      color: #03240f;
+    }
+
+    .group-nav button:hover { background: #16a34a; }
+
+    .group-shuffle {
+      background: rgb(234 179 8 / 0.12);
+      border-color: rgb(234 179 8 / 0.35);
+    }
+
+    .group-shuffle button {
+      background: #eab308;
+      color: #2a2003;
+    }
+
+    .group-shuffle button:hover { background: #ca8a04; }
+
+    .group-util {
+      background: rgb(148 163 184 / 0.14);
+      border-color: rgb(148 163 184 / 0.36);
+      margin-left: auto;
+    }
+
+    .group-util button {
+      background: #94a3b8;
+      color: #0f172a;
+    }
+
+    .group-util button:hover { background: #64748b; }
+
+    .group-random {
+      background: rgb(14 165 233 / 0.15);
+      border-color: rgb(14 165 233 / 0.35);
+    }
+
+    .group-random button {
+      color: #fff;
+    }
+
+    .group-favorite {
+      background: rgb(244 63 94 / 0.14);
+      border-color: rgb(244 63 94 / 0.35);
+    }
+
+    .status-row { margin-bottom: 0; }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.15rem;
+      min-height: 2.15rem;
+      line-height: 1;
+      font-size: 0.98rem;
+      padding: 0.3rem;
+    }
+
+    .small-btn {
+      font-size: 0.68rem;
+      padding: 0.26rem 0.42rem;
+      min-height: 1.7rem;
+    }
+
+    .right-btn {
+      font-size: 0.74rem;
+      padding: 0.32rem 0.5rem;
+      min-height: 1.95rem;
+    }
+
+    .panel-btn { min-width: 2.8rem; }
+
+    .random-btn {
+      font-weight: 700;
+      min-width: 3rem;
+      min-height: 2.75rem;
+      padding: 0.28rem 0.5rem;
+      font-size: 1.45rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid transparent;
+    }
+
+    #randomFavoriteBtn {
+      background: #e11d48;
+      border-color: #fb7185;
+      min-width: 6.6rem;
+      font-size: 0.88rem;
+      letter-spacing: 0.02em;
+      padding: 0.28rem 0.7rem;
+    }
+
+    #randomFavoriteBtn:hover { background: #be123c; }
+
+    #randomPhotoBtn {
+      background: #2563eb;
+      border-color: #60a5fa;
+    }
+
+    #randomPhotoBtn:hover { background: #1d4ed8; }
+
+    #randomVideoBtn {
+      background: #7c3aed;
+      border-color: #a78bfa;
+    }
+
+    #randomVideoBtn:hover { background: #6d28d9; }
+
+    #favoriteBtn {
+      font-weight: 700;
+      border: 2px solid #f59e0b;
+      background: #111827;
+      color: #f8fafc;
+      box-shadow: 0 0 0 2px rgb(245 158 11 / 0.25);
+      min-width: 2.1rem;
+      min-height: 1.95rem;
+      padding: 0.12rem 0.35rem;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    #favoriteBtn:hover {
+      background: #0f1f30;
+      border-color: #fbbf24;
+    }
+
+    #favoriteBtn:focus-visible {
+      outline: 2px solid #fbbf24;
+      outline-offset: 2px;
+    }
+
+    #favoriteBtn.favorited {
+      color: #ef4444;
+      border-color: #ef4444;
+      background: #1b1020;
+      box-shadow: 0 0 0 3px rgb(239 68 68 / 0.3);
+    }
+
+    #favoriteBtn.favorited:hover {
+      background: #2a1222;
+      border-color: #f87171;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .viewer {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-height: 76vh;
+      display: grid;
+      place-items: center;
+      background: #020617;
+      overflow: hidden;
+    }
+
+    .viewer img,
+    .viewer video {
+      max-width: 100%;
+      max-height: 84vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .meta {
+      margin-top: 0.7rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    .favorites-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgb(0 0 0 / 0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 20;
+    }
+
+    .favorites-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .favorites-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(440px, 92vw);
+      height: 100vh;
+      background: #0b1222;
+      border-left: 1px solid var(--border);
+      transform: translateX(100%);
+      transition: transform 0.22s ease;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      padding: 0.9rem;
+      gap: 0.75rem;
+    }
+
+    .favorites-panel.open { transform: translateX(0); }
+
+    .favorites-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .favorites-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .favorites-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      overflow-y: auto;
+      padding-right: 0.2rem;
+    }
+
+    .fav-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.45rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgb(255 255 255 / 0.02);
+    }
+
+    .fav-open {
+      flex: 1;
+      text-align: left;
+      background: #1e293b;
+      color: var(--text);
+      font-size: 0.85rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .fav-remove {
+      background: #dc2626;
+      color: #fff;
+      min-width: 2rem;
+      min-height: 2rem;
+      padding: 0;
+      font-size: 1rem;
+      border-radius: 8px;
+    }
+
+    .fav-remove:hover { background: #b91c1c; }
+
+    #folderInput {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 0.6rem; }
+      .layout { grid-template-columns: 1fr; }
+      .side-rail {
+        max-height: none;
+        overflow: visible;
+      }
+      .group-util { margin-left: 0; }
+      .viewer {
+        min-height: 64vh;
+      }
+      .viewer img,
+      .viewer video {
+        max-height: 72vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="layout">
+      <section class="media-stage">
+        <section id="viewer" class="viewer" aria-live="polite">
+          <div class="status">No media selected.</div>
+        </section>
+        <div id="meta" class="meta"></div>
+      </section>
+
+      <aside class="side-rail">
+        <div class="toolbar">
+          <div class="control-group group-nav">
+            <div class="controls-row">
+              <button id="chooseFolderBtn" class="icon-btn" aria-label="Choose Folder" title="Choose Folder">📁</button>
+              <input id="folderInput" type="file" webkitdirectory directory multiple />
+              <button id="prevBtn" class="icon-btn" aria-label="Previous" title="Previous" disabled>◀</button>
+              <button id="nextBtn" class="icon-btn" aria-label="Next" title="Next" disabled>▶</button>
+            </div>
+          </div>
+
+          <div class="control-group group-shuffle">
+            <div class="controls-row">
+              <button id="noRepeatBtn" title="Avoid repeats until all files are shown once" disabled>No-Repeat: Off</button>
+              <button id="resetNoRepeatBtn" class="small-btn" title="Reset no-repeat mode and queue" disabled>Reset</button>
+            </div>
+          </div>
+
+          <div class="control-group group-util">
+            <div class="controls-row">
+              <button id="revealBtn" class="right-btn" title="Reveal Current File in Finder" disabled>Reveal</button>
+              <button id="favoritesPanelBtn" class="right-btn panel-btn" title="Open Favorites Panel" disabled>★ 0</button>
+            </div>
+          </div>
+
+          <div class="control-group group-favorite">
+            <div class="controls-row">
+              <button id="favoriteBtn" aria-label="Favorite" title="Favorite" aria-pressed="false" disabled>♡</button>
+            </div>
+          </div>
+
+          <div class="control-group group-random">
+            <div class="controls-row">
+              <button id="randomVideoBtn" class="random-btn" aria-label="Random Video" title="Random Video" disabled>🎬</button>
+              <button id="randomPhotoBtn" class="random-btn" aria-label="Random Photo" title="Random Photo" disabled>📸</button>
+              <button id="randomFavoriteBtn" class="random-btn" aria-label="Random Favorites" title="Random Favorites" disabled>Favorites</button>
+            </div>
+          </div>
+        </div>
+        <div class="status-row">
+          <div id="status" class="status">Select a folder with images/videos.</div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div id="favoritesBackdrop" class="favorites-backdrop" aria-hidden="true"></div>
+  <aside id="favoritesPanel" class="favorites-panel" aria-hidden="true" aria-label="Favorites Panel">
+    <div class="favorites-head">
+      <div id="favoritesTitle" class="favorites-title">Favorites (0)</div>
+      <button id="closeFavoritesPanelBtn" class="icon-btn" aria-label="Close Favorites Panel" title="Close">✕</button>
+    </div>
+    <div id="favoritesEmpty" class="status">No favorites in this folder.</div>
+    <div id="favoritesList" class="favorites-list"></div>
+  </aside>
+
+  <script>
+    const folderInput = document.getElementById("folderInput");
+    const chooseFolderBtn = document.getElementById("chooseFolderBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const favoriteBtn = document.getElementById("favoriteBtn");
+    const randomFavoriteBtn = document.getElementById("randomFavoriteBtn");
+    const randomPhotoBtn = document.getElementById("randomPhotoBtn");
+    const randomVideoBtn = document.getElementById("randomVideoBtn");
+    const noRepeatBtn = document.getElementById("noRepeatBtn");
+    const resetNoRepeatBtn = document.getElementById("resetNoRepeatBtn");
+    const revealBtn = document.getElementById("revealBtn");
+    const favoritesPanelBtn = document.getElementById("favoritesPanelBtn");
+    const favoritesBackdrop = document.getElementById("favoritesBackdrop");
+    const favoritesPanel = document.getElementById("favoritesPanel");
+    const closeFavoritesPanelBtn = document.getElementById("closeFavoritesPanelBtn");
+    const favoritesTitle = document.getElementById("favoritesTitle");
+    const favoritesEmpty = document.getElementById("favoritesEmpty");
+    const favoritesList = document.getElementById("favoritesList");
+    const viewer = document.getElementById("viewer");
+    const statusEl = document.getElementById("status");
+    const metaEl = document.getElementById("meta");
+
+    const mediaMimePrefixes = ["image/", "video/"];
+    const FAVORITES_STORAGE_KEY = "randomMediaViewerFavorites";
+    const NO_REPEAT_MODE_STORAGE_KEY = "randomMediaViewerNoRepeatMode";
+    const NO_REPEAT_POOL_STORAGE_KEY = "randomMediaViewerNoRepeatPool";
+
+    let mediaFiles = [];
+    let currentFile = null;
+    let history = [];
+    let historyIndex = -1;
+    const favoriteIds = new Set();
+    let currentObjectUrl = null;
+    let favoritesPanelOpen = false;
+    let noRepeatShuffleEnabled = false;
+    const noRepeatPoolState = { signature: "", remainingIds: [] };
+
+    function loadNoRepeatState() {
+      try {
+        noRepeatShuffleEnabled = localStorage.getItem(NO_REPEAT_MODE_STORAGE_KEY) === "1";
+      } catch (_) {
+        noRepeatShuffleEnabled = false;
+      }
+
+      try {
+        const raw = localStorage.getItem(NO_REPEAT_POOL_STORAGE_KEY);
+        if (!raw) {
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") {
+          return;
+        }
+        noRepeatPoolState.signature = typeof parsed.signature === "string" ? parsed.signature : "";
+        noRepeatPoolState.remainingIds = Array.isArray(parsed.remainingIds)
+          ? parsed.remainingIds.filter((id) => typeof id === "string" && id.length > 0)
+          : [];
+      } catch (_) {
+        noRepeatPoolState.signature = "";
+        noRepeatPoolState.remainingIds = [];
+      }
+    }
+
+    function saveNoRepeatState() {
+      try {
+        localStorage.setItem(NO_REPEAT_MODE_STORAGE_KEY, noRepeatShuffleEnabled ? "1" : "0");
+        localStorage.setItem(
+          NO_REPEAT_POOL_STORAGE_KEY,
+          JSON.stringify({ signature: noRepeatPoolState.signature, remainingIds: noRepeatPoolState.remainingIds })
+        );
+      } catch (_) {
+        // Ignore storage failures.
+      }
+    }
+
+    function cleanupObjectUrl() {
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = null;
+      }
+    }
+
+    function isSupportedMedia(file) {
+      return mediaMimePrefixes.some((prefix) => file.type.startsWith(prefix));
+    }
+
+    function clearViewer(message) {
+      cleanupObjectUrl();
+      viewer.innerHTML = "";
+      const text = document.createElement("div");
+      text.className = "status";
+      text.textContent = message;
+      viewer.appendChild(text);
+      metaEl.textContent = "";
+      currentFile = null;
+    }
+
+    function normalizedRelativePath(file) {
+      const fullPath = (file.webkitRelativePath || file.name).replaceAll("\\", "/");
+      const parts = fullPath.split("/");
+      return (parts.length > 1 ? parts.slice(1).join("/") : parts[0]).trim();
+    }
+
+    function fileId(file) {
+      return normalizedRelativePath(file).toLowerCase();
+    }
+
+    function legacyFileIds(file) {
+      const fullPath = file.webkitRelativePath || file.name;
+      const normalized = normalizedRelativePath(file);
+      const fullLower = fullPath.toLowerCase();
+      const normalizedLower = normalized.toLowerCase();
+      const nameLower = file.name.toLowerCase();
+      return [
+        fullPath,
+        normalized,
+        fullLower,
+        normalizedLower,
+        `${nameLower}::${file.size}`,
+        `${nameLower}::${file.size}::${file.lastModified}`,
+        `${file.name}-${file.size}-${file.lastModified}`,
+      ];
+    }
+
+    function isFavorited(file) {
+      const ids = [fileId(file), ...legacyFileIds(file)].map((id) => String(id).toLowerCase());
+      return ids.some((id) => favoriteIds.has(id));
+    }
+
+    function getFavoriteFiles() {
+      return mediaFiles.filter((file) => isFavorited(file));
+    }
+
+    function getPhotoFiles() {
+      return mediaFiles.filter((file) => file.type.startsWith("image/"));
+    }
+
+    function getVideoFiles() {
+      return mediaFiles.filter((file) => file.type.startsWith("video/"));
+    }
+
+    async function loadFavoritesFromServer() {
+      const response = await fetch("/api/favorites", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      const incoming = Array.isArray(data.favorites) ? data.favorites : [];
+      favoriteIds.clear();
+      incoming.forEach((id) => {
+        if (typeof id === "string" && id.length > 0) {
+          favoriteIds.add(id.toLowerCase());
+        }
+      });
+    }
+
+    function loadFavoritesFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+        if (!raw) {
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          return;
+        }
+        favoriteIds.clear();
+        parsed.forEach((id) => {
+          if (typeof id === "string" && id.length > 0) {
+            favoriteIds.add(id.toLowerCase());
+          }
+        });
+      } catch (_) {
+        // Ignore malformed storage.
+      }
+    }
+
+    async function loadFavorites() {
+      try {
+        await loadFavoritesFromServer();
+        localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(favoriteIds)));
+      } catch (_) {
+        loadFavoritesFromLocalStorage();
+      }
+    }
+
+    async function saveFavoritesToServer() {
+      const response = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorites: Array.from(favoriteIds) }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      const incoming = Array.isArray(data.favorites) ? data.favorites : [];
+      favoriteIds.clear();
+      incoming.forEach((id) => {
+        if (typeof id === "string" && id.length > 0) {
+          favoriteIds.add(id.toLowerCase());
+        }
+      });
+    }
+
+    function saveFavorites() {
+      try {
+        localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(favoriteIds)));
+      } catch (_) {
+        // Ignore storage failures.
+      }
+    }
+
+    function updateButtons() {
+      const hasMedia = mediaFiles.length > 0;
+      const hasCurrent = Boolean(currentFile);
+      const favoritesCount = getFavoriteFiles().length;
+
+      prevBtn.disabled = historyIndex <= 0;
+      nextBtn.disabled = !hasMedia;
+      favoriteBtn.disabled = !hasCurrent;
+      randomFavoriteBtn.disabled = favoritesCount === 0;
+      randomPhotoBtn.disabled = getPhotoFiles().length === 0;
+      randomVideoBtn.disabled = getVideoFiles().length === 0;
+      noRepeatBtn.disabled = !hasMedia;
+      resetNoRepeatBtn.disabled = !noRepeatShuffleEnabled && noRepeatPoolState.remainingIds.length === 0;
+      revealBtn.disabled = !hasCurrent;
+      favoritesPanelBtn.disabled = !hasMedia;
+      favoritesPanelBtn.textContent = `★ ${favoritesCount}`;
+      noRepeatBtn.textContent = `No-Repeat: ${noRepeatShuffleEnabled ? "On" : "Off"}`;
+
+      const isFavorite = hasCurrent ? isFavorited(currentFile) : false;
+      favoriteBtn.classList.toggle("favorited", isFavorite);
+      favoriteBtn.setAttribute("aria-pressed", isFavorite ? "true" : "false");
+      favoriteBtn.textContent = isFavorite ? "♥" : "♡";
+      favoriteBtn.title = isFavorite ? "Unfavorite" : "Favorite";
+      favoriteBtn.setAttribute("aria-label", isFavorite ? "Unfavorite" : "Favorite");
+
+      renderFavoritesPanel();
+    }
+
+    function pickRandomFile(files) {
+      const index = Math.floor(Math.random() * files.length);
+      return files[index];
+    }
+
+    function shuffleArray(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function getPoolSignature(files) {
+      return files.map((file) => fileId(file)).sort().join("|");
+    }
+
+    function pickRandomFileNoRepeat(files) {
+      const signature = getPoolSignature(files);
+
+      if (noRepeatPoolState.signature !== signature) {
+        noRepeatPoolState.signature = signature;
+        noRepeatPoolState.remainingIds = shuffleArray(files.map((file) => fileId(file)));
+        saveNoRepeatState();
+      }
+
+      if (!noRepeatPoolState.remainingIds.length) {
+        noRepeatPoolState.remainingIds = shuffleArray(files.map((file) => fileId(file)));
+        saveNoRepeatState();
+      }
+
+      const nextId = noRepeatPoolState.remainingIds.shift();
+      saveNoRepeatState();
+      const nextFile = files.find((file) => fileId(file) === nextId);
+      return nextFile || pickRandomFile(files);
+    }
+
+    function showFile(file, addToHistory = true) {
+      cleanupObjectUrl();
+      viewer.innerHTML = "";
+      currentFile = file;
+
+      currentObjectUrl = URL.createObjectURL(file);
+      const isVideo = file.type.startsWith("video/");
+
+      if (isVideo) {
+        const video = document.createElement("video");
+        video.src = currentObjectUrl;
+        video.controls = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        viewer.appendChild(video);
+      } else {
+        const img = document.createElement("img");
+        img.src = currentObjectUrl;
+        img.alt = file.name;
+        viewer.appendChild(img);
+      }
+
+      if (addToHistory) {
+        if (historyIndex < history.length - 1) {
+          history = history.slice(0, historyIndex + 1);
+        }
+        history.push(file);
+        historyIndex = history.length - 1;
+      }
+
+      const favoritesCount = getFavoriteFiles().length;
+      const isFavorite = isFavorited(file);
+      statusEl.textContent = `Loaded ${mediaFiles.length} media file${mediaFiles.length === 1 ? "" : "s"} | Favorites: ${favoritesCount}`;
+      metaEl.textContent = `Now showing: ${file.webkitRelativePath || file.name}${isFavorite ? " (favorited)" : ""}`;
+      updateButtons();
+    }
+
+    function showRandomMedia(files = mediaFiles) {
+      if (!files.length) {
+        clearViewer("No supported media in this folder.");
+        updateButtons();
+        return;
+      }
+      const selected = noRepeatShuffleEnabled ? pickRandomFileNoRepeat(files) : pickRandomFile(files);
+      showFile(selected);
+    }
+
+    function showRandomFavorite() {
+      const favorites = getFavoriteFiles();
+      if (!favorites.length) {
+        clearViewer("No favorites in current folder.");
+        updateButtons();
+        return;
+      }
+      showRandomMedia(favorites);
+    }
+
+    function showRandomPhoto() {
+      const photos = getPhotoFiles();
+      if (!photos.length) {
+        clearViewer("No photos in this folder.");
+        updateButtons();
+        return;
+      }
+      showRandomMedia(photos);
+    }
+
+    function showRandomVideo() {
+      const videos = getVideoFiles();
+      if (!videos.length) {
+        clearViewer("No videos in this folder.");
+        updateButtons();
+        return;
+      }
+      showRandomMedia(videos);
+    }
+
+    function showPrevious() {
+      if (historyIndex <= 0) {
+        return;
+      }
+      historyIndex -= 1;
+      showFile(history[historyIndex], false);
+    }
+
+    function showNext() {
+      if (!mediaFiles.length) {
+        clearViewer("No supported media in this folder.");
+        updateButtons();
+        return;
+      }
+
+      if (historyIndex < history.length - 1) {
+        historyIndex += 1;
+        showFile(history[historyIndex], false);
+        return;
+      }
+
+      showRandomMedia(mediaFiles);
+    }
+
+    async function toggleFavorite() {
+      if (!currentFile) {
+        return;
+      }
+      await setFavoriteState(currentFile, !isFavorited(currentFile));
+      showFile(currentFile, false);
+    }
+
+    async function setFavoriteState(file, shouldFavorite) {
+      const allIds = [fileId(file), ...legacyFileIds(file)].map((id) => String(id).toLowerCase());
+      if (shouldFavorite) {
+        allIds.forEach((id) => favoriteIds.add(id));
+      } else {
+        allIds.forEach((id) => favoriteIds.delete(id));
+      }
+      saveFavorites();
+      try {
+        await saveFavoritesToServer();
+      } catch (_) {
+        // Local fallback already saved above.
+      }
+    }
+
+    async function revealCurrentFile() {
+      if (!currentFile) {
+        return;
+      }
+      const relativePath = normalizedRelativePath(currentFile);
+      try {
+        const response = await fetch("/api/reveal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ relativePath }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        statusEl.textContent = `Revealed in Finder: ${relativePath}`;
+      } catch (error) {
+        statusEl.textContent = `Reveal failed: ${error.message} (set MEDIA_ROOT in server.py to your selected folder).`;
+      }
+    }
+
+    function setFavoritesPanelOpen(open) {
+      favoritesPanelOpen = open;
+      favoritesPanel.classList.toggle("open", open);
+      favoritesBackdrop.classList.toggle("open", open);
+      favoritesPanel.setAttribute("aria-hidden", open ? "false" : "true");
+      favoritesBackdrop.setAttribute("aria-hidden", open ? "false" : "true");
+    }
+
+    function getSortedFavoriteFiles() {
+      return [...getFavoriteFiles()].sort((a, b) => {
+        return normalizedRelativePath(a).localeCompare(normalizedRelativePath(b), undefined, { sensitivity: "base" });
+      });
+    }
+
+    function renderFavoritesPanel() {
+      const favorites = getSortedFavoriteFiles();
+      favoritesTitle.textContent = `Favorites (${favorites.length})`;
+      favoritesList.innerHTML = "";
+      favoritesEmpty.style.display = favorites.length ? "none" : "block";
+
+      favorites.forEach((file) => {
+        const row = document.createElement("div");
+        row.className = "fav-item";
+
+        const openBtn = document.createElement("button");
+        openBtn.className = "fav-open";
+        openBtn.title = normalizedRelativePath(file);
+        openBtn.textContent = normalizedRelativePath(file);
+        openBtn.addEventListener("click", () => {
+          showFile(file);
+          setFavoritesPanelOpen(false);
+        });
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "fav-remove";
+        removeBtn.title = "Remove from Favorites";
+        removeBtn.setAttribute("aria-label", "Remove from Favorites");
+        removeBtn.textContent = "✕";
+        removeBtn.addEventListener("click", async (event) => {
+          event.stopPropagation();
+          await setFavoriteState(file, false);
+          updateButtons();
+        });
+
+        row.appendChild(openBtn);
+        row.appendChild(removeBtn);
+        favoritesList.appendChild(row);
+      });
+    }
+
+    function resetStateForNewFolder() {
+      history = [];
+      historyIndex = -1;
+      currentFile = null;
+    }
+
+    function initializeFolderView() {
+      if (!mediaFiles.length) {
+        clearViewer("No supported media in this folder.");
+        statusEl.textContent = "Try another folder.";
+        updateButtons();
+        return;
+      }
+      showRandomMedia(mediaFiles);
+    }
+
+    chooseFolderBtn.addEventListener("click", () => {
+      folderInput.click();
+    });
+
+    noRepeatBtn.addEventListener("click", () => {
+      noRepeatShuffleEnabled = !noRepeatShuffleEnabled;
+      noRepeatPoolState.signature = "";
+      noRepeatPoolState.remainingIds = [];
+      saveNoRepeatState();
+      updateButtons();
+    });
+
+    resetNoRepeatBtn.addEventListener("click", () => {
+      noRepeatShuffleEnabled = false;
+      noRepeatPoolState.signature = "";
+      noRepeatPoolState.remainingIds = [];
+      saveNoRepeatState();
+      updateButtons();
+    });
+
+    folderInput.addEventListener("change", (event) => {
+      cleanupObjectUrl();
+      const files = Array.from(event.target.files || []);
+      mediaFiles = files.filter(isSupportedMedia);
+      resetStateForNewFolder();
+
+      if (!mediaFiles.length) {
+        clearViewer("No image/video files were found.");
+        updateButtons();
+        return;
+      }
+
+      initializeFolderView();
+    });
+
+    prevBtn.addEventListener("click", showPrevious);
+    nextBtn.addEventListener("click", showNext);
+    favoriteBtn.addEventListener("click", toggleFavorite);
+    randomFavoriteBtn.addEventListener("click", showRandomFavorite);
+    randomPhotoBtn.addEventListener("click", showRandomPhoto);
+    randomVideoBtn.addEventListener("click", showRandomVideo);
+    revealBtn.addEventListener("click", revealCurrentFile);
+    favoritesPanelBtn.addEventListener("click", () => setFavoritesPanelOpen(true));
+    closeFavoritesPanelBtn.addEventListener("click", () => setFavoritesPanelOpen(false));
+    favoritesBackdrop.addEventListener("click", () => setFavoritesPanelOpen(false));
+
+    window.addEventListener("beforeunload", cleanupObjectUrl);
+    loadNoRepeatState();
+    updateButtons();
+    loadFavorites().finally(updateButtons);
+  </script>
+</body>
+</html>
