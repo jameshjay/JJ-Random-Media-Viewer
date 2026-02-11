@@ -13,6 +13,21 @@ DB_PATH = Path("favorites_db.json")
 MEDIA_ROOT = Path("/Users/JJ2/Library/CloudStorage/GoogleDrive-jameshjay22@gmail.com/My Drive/JJ_Random")
 
 
+def get_port():
+    env_port = os.environ.get("PORT")
+    arg_port = os.sys.argv[1] if len(os.sys.argv) > 1 else None
+    raw_port = arg_port if arg_port is not None else env_port
+    if raw_port is None:
+        return PORT
+    try:
+        port = int(raw_port)
+    except ValueError:
+        return PORT
+    if 1 <= port <= 65535:
+        return port
+    return PORT
+
+
 def load_db():
     if not DB_PATH.exists():
         return {"favorites": []}
@@ -168,7 +183,8 @@ class AppHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(Path(__file__).resolve().parent)
-    with ThreadingHTTPServer((HOST, PORT), AppHandler) as httpd:
-        print(f"Serving app on http://{HOST}:{PORT}")
+    port = get_port()
+    with ThreadingHTTPServer((HOST, port), AppHandler) as httpd:
+        print(f"Serving app on http://{HOST}:{port}")
         print(f"Favorites DB: {DB_PATH.resolve()}")
         httpd.serve_forever()

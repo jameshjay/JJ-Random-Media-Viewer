@@ -29,7 +29,7 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-python3 server.py >/dev/null 2>&1 &
+python3 server.py "$PORT" >/dev/null 2>&1 &
 SERVER_PID=$!
 
 sleep 1
